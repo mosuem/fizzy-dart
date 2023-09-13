@@ -22,10 +22,10 @@ Stream<Uint8List> genFizzbuzz() async* {
       ptr += fblength;
     } else if (i % 3 == 0) {
       s.setRange(ptr, ptr + flength, fizz);
-      ptr += fblength;
+      ptr += flength;
     } else if (i % 5 == 0) {
       s.setRange(ptr, ptr + flength, buzz);
-      ptr += fblength;
+      ptr += flength;
     } else {
       final codeUnits = i.toString().codeUnits;
       s.setRange(ptr, ptr + codeUnits.length, codeUnits);
