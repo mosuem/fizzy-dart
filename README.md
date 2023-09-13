@@ -1,7 +1,7 @@
 Run 
 
 ```bash
-dart run bin/fizzbuzz.dart | pv --force > /dev/null
+dart run bin/fizzbuzz.dart | pv -lF 'current: %r, average: %a' > /dev/null
 ```
 
 and if needed:
