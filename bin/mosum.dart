@@ -15,7 +15,7 @@ void main(List<String> arguments) {
 Stream<Uint8List> genFizzbuzz() async* {
   int i = 1;
   int ptr = 0;
-  var s = Uint8List(30000);
+  var s = Uint8List(64000);
   while (true) {
     if (i % 15 == 0) {
       s.setRange(ptr, ptr + fblength, fizzbuzz);
@@ -34,7 +34,7 @@ Stream<Uint8List> genFizzbuzz() async* {
     s[ptr++] = 10;
 
     i++;
-    if (ptr > 15000) {
+    if (ptr > 63900) {
       yield Uint8List.sublistView(s, 0, ptr);
       ptr = 0;
     }
