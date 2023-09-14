@@ -86,7 +86,7 @@ class Job {
 extension _ on BytesBuilder {
   void addInt(int value) {
     add(value.toString().codeUnits);
-    add([10]);
+    addByte(10);
   }
 }
 
