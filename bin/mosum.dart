@@ -62,36 +62,27 @@ void genFizzbuzz(SendPort sendPort) {
   sendPort.send(receivePort.sendPort);
   receivePort.listen((i) {
     i = i as int;
-    var s = Uint8List(iterationsPerTask * 15 * 8);
+    var s = BytesBuilder();
     var j = 0;
-    int ptr = 0;
     while (j < iterationsPerTask) {
-      ptr = s.setIntRange(i, ptr); // 1
-      ptr = s.setIntRange(i + 1, ptr); // 2
-      ptr = s.setFizz(ptr); // 3
-      ptr = s.setIntRange(i + 3, ptr); // 4
-      ptr = s.setBuzz(ptr); // 5
-      ptr = s.setFizz(ptr); // 6
-      ptr = s.setIntRange(i + 6, ptr); // 7
-      ptr = s.setIntRange(i + 7, ptr); // 8
-      ptr = s.setFizz(ptr); // 9
-      ptr = s.setBuzz(ptr); // 10
-      ptr = s.setIntRange(i + 10, ptr); // 11
-      ptr = s.setFizz(ptr); // 12
-      ptr = s.setIntRange(i + 12, ptr); // 13
-      ptr = s.setIntRange(i + 13, ptr); // 14
-      ptr = s.setFizzBuzz(ptr); // 15
+      s.addInt(i); // 1
+      s.addInt(i + 1); // 2
+      s.add(fizz); // 3
+      s.addInt(i + 3); // 4
+      s.add(buzzThenFizz); // 5 & 6
+      s.addInt(i + 6); // 7
+      s.addInt(i + 7); // 8
+      s.add(fizzThenBuzz); // 9 & 10
+      s.addInt(i + 10); // 11
+      s.add(fizz); // 12
+      s.addInt(i + 12); // 13
+      s.addInt(i + 13); // 14
+      s.add(fizzbuzz); // 15
 
       i += 15;
       j++;
     }
-    sendPort.send(TransferableTypedData.fromList([
-      Uint8List.sublistView(
-        s,
-        0,
-        ptr,
-      )
-    ]));
+    sendPort.send(TransferableTypedData.fromList([s.takeBytes()]));
   });
 }
 
@@ -99,30 +90,10 @@ class Job {
   Uint8List? result;
 }
 
-extension _ on Uint8List {
-  int setIntRange(int value, int ptr) {
-    final codeUnits = value.toString().codeUnits;
-    setRange(ptr, ptr + codeUnits.length, codeUnits);
-    this[ptr + codeUnits.length] = 10;
-    return ptr + codeUnits.length + 1;
-  }
-
-  int setFizz(int ptr) {
-    setRange(ptr, ptr + flength, fizz);
-    this[ptr + flength] = 10;
-    return ptr + flength + 1;
-  }
-
-  int setBuzz(int ptr) {
-    setRange(ptr, ptr + flength, buzz);
-    this[ptr + flength] = 10;
-    return ptr + flength + 1;
-  }
-
-  int setFizzBuzz(int ptr) {
-    setRange(ptr, ptr + fblength, fizzbuzz);
-    this[ptr + fblength] = 10;
-    return ptr + fblength + 1;
+extension _ on BytesBuilder {
+  void addInt(int value) {
+    add(value.toString().codeUnits);
+    addByte(10);
   }
 }
 
