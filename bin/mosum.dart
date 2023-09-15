@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 /// Uncomment for testing correctness
 // import '../test/check_correctness.dart';
+
 // IOSink sink = testSink;
 
 IOSink sink = stdout;
@@ -25,6 +26,7 @@ int iterationsPerTask = 500;
 // Incremental gains past this, machine dependent also.
 const numWorkers = 12;
 
+const int nLength = 20;
 void main(List<String> arguments) async {
   var next = 1;
   final jobQueue = Queue<Job>();
@@ -61,29 +63,72 @@ void main(List<String> arguments) async {
 void genFizzbuzz(SendPort sendPort) {
   var receivePort = ReceivePort();
   sendPort.send(receivePort.sendPort);
-  receivePort.listen((i) {
-    i = i as int;
-    var s = BytesBuilder();
+  receivePort.listen((i2) {
+    var message = i2 as int;
+
+    var string = message.toString();
+    var n = Uint8List(nLength)..fillRange(1, nLength, zero);
+    n[0] = string.length;
+    n.setRange(
+      nLength - string.length,
+      nLength,
+      string.codeUnits,
+    );
+    var s = BytesBuilder(copy: true);
     var j = 0;
     while (j < iterationsPerTask) {
-      s.addInt(i); // 1
-      s.addInt(i + 1); // 2
-      s.add(fizz); // 3
-      s.addInt(i + 3); // 4
-      s.add(buzzThenFizz); // 5 & 6
-      s.addInt(i + 6); // 7
-      s.addInt(i + 7); // 8
-      s.add(fizzThenBuzz); // 9 & 10
-      s.addInt(i + 10); // 11
-      s.add(fizz); // 12
-      s.addInt(i + 12); // 13
-      s.addInt(i + 13); // 14
-      s.add(fizzbuzz); // 15
+      s.add(n.number);
+      s.addByte(10); // 1
+      n.inc();
 
-      i += 15;
+      s.add(n.number);
+      s.addByte(10); // 2
+      n.inc();
+
+      s.add(fizz); // 3
+      n.inc();
+
+      s.add(n.number);
+      s.addByte(10); // 4
+      n.inc();
+
+      s.add(buzzThenFizz); // 5 & 6
+      n.inc();
+      n.inc();
+
+      s.add(n.number);
+      s.addByte(10); // 7
+      n.inc();
+
+      s.add(n.number);
+      s.addByte(10); // 8
+      n.inc();
+
+      s.add(fizzThenBuzz); // 9 & 10
+      n.inc();
+      n.inc();
+
+      s.add(n.number);
+      s.addByte(10); // 11
+      n.inc();
+
+      s.add(fizz); // 12
+      n.inc();
+
+      s.add(n.number);
+      s.addByte(10); // 13
+      n.inc();
+
+      s.add(n.number);
+      s.addByte(10); // 14
+      n.inc();
+
+      s.add(fizzbuzz); // 15
+      n.inc();
+
       j++;
     }
-    sendPort.send(TransferableTypedData.fromList([s.takeBytes()]));
+    sendPort.send(TransferableTypedData.fromList([(s.takeBytes())]));
   });
 }
 
@@ -91,42 +136,30 @@ class Job {
   Uint8List? result;
 }
 
-extension _ on BytesBuilder {
-  void addInt(int value) {
-    add(value.toString().codeUnits);
-    addByte(10);
+final zero = '0'.codeUnits.first;
+final nine = '9'.codeUnits.first;
+
+extension NumberExt on Uint8List {
+  Uint8List inc() {
+    bool carry = true;
+    int k = nLength - 1;
+    while (carry) {
+      if (carry) {
+        this[k]++;
+        carry = false;
+        if (nLength - k > this[0]) {
+          this[0]++;
+        }
+      }
+      if (this[k] > nine) {
+        this[k] = zero;
+        carry = true;
+      }
+      k--;
+    }
+    return this;
   }
+
+  Uint8List get number =>
+      Uint8List.sublistView(this, nLength - this[0], nLength);
 }
-
-
-// Uint8List uint8(int i) {
-//   int n = i;
-//   int count = 0;
-//   while (n != 0) {
-//     n = n ~/ 10;
-//     count++;
-//   }
-//   final bytes = Uint8List(count);
-//   for (var j = 0; j < count; j++) {
-//     bytes[count - (j + 1)] = i % 10 + 48;
-//     i = (i ~/ 10);
-//   }
-//   return bytes;
-// }
-
-// Uint8List uint8_2(int i) {
-//   const length = 100;
-//   int n = i;
-//   int count = 0;
-//   final bytes = Uint8List(length);
-//   while (n != 0) {
-//     bytes[length - (count + 1)] = n % 10 + 48;
-//     n = n ~/ 10;
-//     count++;
-//   }
-//   return bytes.sublist(length - count);
-// }
-
-// List<int> uint8_3(int i) {
-//   return i.toString().codeUnits;
-// }
