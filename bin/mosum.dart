@@ -3,10 +3,11 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
-import '../test/check_correctness.dart';
+/// Uncomment for testing correctness
+// import '../test/check_correctness.dart';
+// IOSink sink = testSink;
 
 IOSink sink = stdout;
-// IOSink sink = testSink;
 
 final fizzbuzz = "FizzBuzz\n".codeUnits;
 final fizz = "Fizz\n".codeUnits;
