@@ -1,44 +1,102 @@
+import 'dart:collection';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
-final fizzbuzz = "FizzBuzz".codeUnits;
-final fizz = "Fizz".codeUnits;
-final buzz = "Buzz".codeUnits;
+import '../test/check_correctness.dart';
 
+IOSink sink = stdout;
+// IOSink sink = testSink;
+
+final fizzbuzz = "FizzBuzz\n".codeUnits;
+final fizz = "Fizz\n".codeUnits;
+final buzz = "Buzz\n".codeUnits;
+final buzzThenFizz = "Buzz\nFizz\n".codeUnits;
+final fizzThenBuzz = "Fizz\nBuzz\n".codeUnits;
 const fblength = 8;
 const flength = 4;
 
-void main(List<String> arguments) {
-  stdout.addStream(genFizzbuzz());
+// Much more than this and we get messages >64k back.
+//
+// TODO: adjust this down over time if responses grow in size beyond 64k?
+int iterationsPerTask = 500;
+
+// Incremental gains past this, machine dependent also.
+const numWorkers = 12;
+
+void main(List<String> arguments) async {
+  var next = 1;
+  final jobQueue = Queue<Job>();
+
+  for (var worker = 0; worker < numWorkers; worker++) {
+    final receivePort = ReceivePort();
+    Isolate.spawn(
+      genFizzbuzz,
+      receivePort.sendPort,
+    );
+    late SendPort sendPort;
+    late Job lastJob;
+    receivePort.listen((message) {
+      switch (message) {
+        case SendPort():
+          sendPort = message;
+        case TransferableTypedData():
+          lastJob.result = message.materialize().asUint8List();
+          while (jobQueue.isNotEmpty && jobQueue.first.result != null) {
+            sink.add(jobQueue.removeFirst().result!);
+          }
+        default:
+          throw StateError(
+              'Bad state, expected a SendPort or TransferableTypedData but got '
+              '$message');
+      }
+      jobQueue.add(lastJob = Job());
+      sendPort.send(next);
+      next += 15 * iterationsPerTask;
+    });
+  }
 }
 
-Stream<Uint8List> genFizzbuzz() async* {
-  int i = 1;
-  int ptr = 0;
-  var s = Uint8List(64000);
-  while (true) {
-    ptr = s.setIntRange(i, ptr); // 1
-    ptr = s.setIntRange(i + 1, ptr); // 2
-    ptr = s.setFizz(ptr); // 3
-    ptr = s.setIntRange(i + 3, ptr); // 4
-    ptr = s.setBuzz(ptr); // 5
-    ptr = s.setFizz(ptr); // 6
-    ptr = s.setIntRange(i + 6, ptr); // 7
-    ptr = s.setIntRange(i + 7, ptr); // 8
-    ptr = s.setFizz(ptr); // 9
-    ptr = s.setBuzz(ptr); // 10
-    ptr = s.setIntRange(i + 10, ptr); // 11
-    ptr = s.setFizz(ptr); // 12
-    ptr = s.setIntRange(i + 12, ptr); // 13
-    ptr = s.setIntRange(i + 13, ptr); // 14
-    ptr = s.setFizzBuzz(ptr); // 15
+void genFizzbuzz(SendPort sendPort) {
+  var receivePort = ReceivePort();
+  sendPort.send(receivePort.sendPort);
+  receivePort.listen((i) {
+    i = i as int;
+    var s = Uint8List(iterationsPerTask * 15 * 8);
+    var j = 0;
+    int ptr = 0;
+    while (j < iterationsPerTask) {
+      ptr = s.setIntRange(i, ptr); // 1
+      ptr = s.setIntRange(i + 1, ptr); // 2
+      ptr = s.setFizz(ptr); // 3
+      ptr = s.setIntRange(i + 3, ptr); // 4
+      ptr = s.setBuzz(ptr); // 5
+      ptr = s.setFizz(ptr); // 6
+      ptr = s.setIntRange(i + 6, ptr); // 7
+      ptr = s.setIntRange(i + 7, ptr); // 8
+      ptr = s.setFizz(ptr); // 9
+      ptr = s.setBuzz(ptr); // 10
+      ptr = s.setIntRange(i + 10, ptr); // 11
+      ptr = s.setFizz(ptr); // 12
+      ptr = s.setIntRange(i + 12, ptr); // 13
+      ptr = s.setIntRange(i + 13, ptr); // 14
+      ptr = s.setFizzBuzz(ptr); // 15
 
-    i += 15;
-    if (ptr > 60000) {
-      yield Uint8List.sublistView(s, 0, ptr);
-      ptr = 0;
+      i += 15;
+      j++;
     }
-  }
+    sendPort.send(TransferableTypedData.fromList([
+      Uint8List.sublistView(
+        s,
+        0,
+        ptr,
+      )
+    ]));
+  });
+}
+
+class Job {
+  Uint8List? result;
 }
 
 extension _ on Uint8List {

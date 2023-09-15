@@ -3,6 +3,10 @@ import 'dart:io';
 const String fizzbuzz = "FizzBuzz";
 const String fizz = "Fizz";
 const String buzz = "Buzz";
+
+StringSink sink = stdout;
+// StringSink sink = testSink;
+
 void main(List<String> arguments) {
   int i = 1;
   var s = StringBuffer();
@@ -18,8 +22,7 @@ void main(List<String> arguments) {
     }
     i++;
     if (i > 1000000) {
-      stdout.write(s.toString());
-      i = 1;
+      sink.write(s.toString());
       s.clear();
     }
   }
